@@ -1,0 +1,132 @@
+---
+title: "R Workshop: Analyzing MPR survey responses using 'final' poll format" 
+author: "Amelia Ritger"
+date: "11/07/2022"
+output: html_document
+---
+
+## Before starting, you need to convert .xlsx responses to .csv! Bath convert following these directions:
+Download LibreOffice, open up data folder in terminal, then run this script:
+/Applications/LibreOffice.app/Contents/MacOS/soffice --headless --convert-to csv *.xlsx
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse) #use for so many things!
+library(janitor) #use to clean up column headers
+library(here) #use to work with folder structure
+library(scales) #use to customize figure axes
+library(viridis) #use to apply colorblind friendly palette
+library(ggimage) #use to plot human icon
+```
+
+## Import Data
+```{r, message=FALSE}
+#Create a list of all .csv files we have received
+file_names <- list.files(here("survey-analysis", "ocnms-responses"), pattern = ".csv$", recursive = TRUE, full.names = TRUE)
+
+#Take that list and merge all .csv files into one dataframe
+all_merged <- read_csv(file_names, col_names = FALSE) %>%
+  select(1:5) %>% #only keep first 5 columns
+  setNames(c("affiliation", "focus_area", "description", "issues_to_rate", "score")) #change column names, use snake case (or use clean_names)
+
+#Remove header rows and OTHER rows
+all_clean <- all_merged %>%
+  filter(is.na(score) | !str_detect(score, 'Focus Area'), #remove Focus Area header
+         is.na(score) | !str_detect(score, 'Priority'), #remove Priority Topic header
+         is.na(score) | !str_detect(focus_area, "[:digit:]"), #remove header rows (those that contain (number))
+         is.na(score) | !str_detect(score, 'Score'), #keep non-ranked issues, just in case - especially for comments and "other" responses
+         !is.na(description)) %>% #remove blank rows in Description
+  mutate(issues_to_rate = ifelse(str_detect(issues_to_rate, 'Water quality') == TRUE, "Water quality protection", issues_to_rate)) #something is weird with the value of "water quality protection", so fix that
+
+rankings <- all_clean %>%
+  mutate(score = replace_na(score, "None")) %>% #if someone left an issue blank in the rating, rename it "None" so we can assign a score of 0
+  filter(str_detect(score, 'High|Medium|Low|None')) %>% #remove "do not score" rows (aka OTHER, comments)
+  mutate(value = ifelse(score == "Low", 1, ifelse(score == "Medium", 2, ifelse(score == "High", 3, 0)))) %>% #convert scores to numeric: high = 3, medium = 2, low = 1, no response/NA = 0
+  filter(!is.na(issues_to_rate),
+#remove rows with "NA" in issues to rate column
+         !str_detect(issues_to_rate, 'Write')) #remove "Other" rows
+
+#filter out the comments
+comments <- all_clean %>%
+  filter(str_detect(description, 'Other?'), #keep "Other" rows
+         !str_detect(score, 'High|Medium|Low') | is.na(score)) #people weren't supposed to score "other", so remove rows with a score
+```
+
+## Group and count total responses
+```{r}
+issue_totals <- rankings %>%
+  group_by(issues_to_rate) %>% #group by issue
+  summarize(total = sum(value), #total score for each issue
+            mean = mean(value), #mean
+            sd = sd(value), #standard deviation
+            n = n()) %>% #number of responses
+  arrange(desc(total)) #arrange from highest score > lowest score 
+```
+
+## Plot mean and sd of responses, including total score
+```{r}
+ggplot(data = issue_totals) +
+  geom_col(aes(x=reorder(issues_to_rate, mean), y=mean, fill = mean)) +
+  geom_errorbar(aes(x = issues_to_rate, ymin=mean, ymax=mean+sd), colour="black", width=0.5) +
+  geom_text(aes(x=reorder(issues_to_rate, -mean), y=-0.15, label = total)) + #add total counts
+  scale_fill_viridis(direction = -1) + #add color for fun
+  labs(x="", y="Average Ranking", caption = "*Bar sizes and color represent average (mean) ranking. Error bars represent standard deviation. Numbers represent total (sum) score.") + #rename axis titles
+  coord_flip() +
+  theme_minimal() +
+  theme(legend.position = "none",
+        plot.caption = element_text(hjust = 5, face = "italic"))
+
+#ggsave(here("figures", "mean_sd.png"), height=15, width=25, units="cm", bg = "white")
+```
+
+Plot up the level of consensus AKA s.d.
+```{r}
+issue_totals <- issue_totals %>%
+  mutate(sd2 = (1-sd),
+         issues_to_rate = fct_reorder(issues_to_rate, desc(sd)))
+
+ggplot(issue_totals, aes(x=issues_to_rate, y=sd2)) +
+  geom_segment(aes(x=issues_to_rate, xend=issues_to_rate, y=0, yend=sd2, color = mean)) +
+  geom_image(aes(image="https://upload.wikimedia.org/wikipedia/commons/d/d8/Person_icon_BLACK-01.svg", color = mean), size=0.03) +
+  scale_color_viridis(direction = -1, name = "Mean rank") +
+  scale_y_continuous(breaks=c(0,0.5,1), labels=c("Low", "Medium", "High")) +
+  labs(x = "", y = "Group consensus on ranking", caption = "*Consensus was assessed from standard deviation for each issue. Color represents average ranking for each issue.") +
+  coord_flip() +
+  theme_minimal() +
+  theme(
+    axis.ticks.y = element_blank(),
+    plot.caption = element_text(hjust = 5, face = "italic"))
+
+#ggsave(here("figures", "consensus.png"), height=15, width=25, units="cm", bg = 'white')
+```
+
+## Break down each issue by ranking from each seat, with heatmap
+```{r, message = FALSE}
+rankings_count <- rankings %>%
+  group_by(issues_to_rate) %>%
+  mutate(count = row_number()) %>% #get the number of consecutive counts for each issue (to plot)
+  ungroup() %>%
+  mutate(issues_to_rate = fct_inorder(issues_to_rate), #set order of issues as order in which they appear on data table
+         score = fct_relevel(score, c("High", "Medium", "Low"))) #set order of scores (not alphabetical)
+
+ggplot(rankings_count, aes(x=reorder(issues_to_rate, desc(issues_to_rate)), y=count, fill=score)) + #use count and not affiliation because everyone at OCNMS has the same affiliation
+  geom_tile(color = "black") +
+  coord_flip() +
+  labs(x="", y="") +
+  scale_y_discrete(position = "right") +
+  scale_fill_viridis(discrete = TRUE) +
+  theme_minimal() +
+  theme(axis.text.x=element_text(angle=45, vjust = -1, hjust=0))
+
+#ggsave(here("figures", "individual_responses_heatmap.png"), height=15, width=25, units="cm", bg = "white")
+```
+
+Save the comments as a .csv
+```{r}
+comments <- comments %>%
+  arrange(focus_area) %>%
+  select(1:4)
+
+#write_csv(comments, here("figures", "comments.csv"))
+```
