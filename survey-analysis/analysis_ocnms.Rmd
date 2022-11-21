@@ -130,3 +130,28 @@ comments <- comments %>%
 
 #write_csv(comments, here("figures", "comments.csv"))
 ```
+
+Another way to visualize "Convergence: via selecting example topics 
+```{r}
+rankings_consensus <- rankings_count %>%
+  filter(issues_to_rate %in% c("Community outreach", "Canadian government", "Changing ocean conditions")) %>%
+  mutate(issues_to_rate = fct_relevel(issues_to_rate, c("Community outreach", "Canadian government", "Changing ocean conditions")))
+
+ggplot(data = rankings_consensus, aes(x=issues_to_rate, y=count)) + 
+  geom_image(aes(image="https://upload.wikimedia.org/wikipedia/commons/d/d8/Person_icon_BLACK-01.svg", color = score), size=0.1) +
+  geom_text(label = "'High' average rank, 'High' convergence (Mean =  3.00, Standard deviation = 0.00)", x=3.35, y=2, size = 3.5) +
+  geom_text(label = "'Low' average rank, 'Medium' convergence (Mean = 1.21, Standard deviation = 0.43)", x=2.35, y=2.2, size = 3.5) +
+  geom_text(label = "'Medium' average rank, 'Low' convergence (Mean =  2.29, Standard deviation = 0.92)", x=1.35, y=2.2, size = 3.5) +
+  scale_color_viridis(discrete=TRUE, name = "Rank") +
+  coord_flip(clip="off") + #flip coordinates to make it more readable
+  labs(y="", x="", caption = "*Each icon represents a OCNMS staff person's response. Color represents the staff person's ranking of the topic. Convergence was calculated from the standard deviation of rankings.") + #set axis labels, maybe "Number of respondents"?
+  theme_classic() + #simplify the theme
+  theme(axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.line.x = element_blank(),
+        axis.line.y = element_blank(),
+        legend.position = "bottom",
+        plot.caption = element_text(hjust = 0, face = "italic"))
+
+#ggsave(here("figures", "sac-convergence-example.png"), height=15, width=25, units="cm", bg = "white")
+```
