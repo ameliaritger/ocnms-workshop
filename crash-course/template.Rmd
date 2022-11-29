@@ -9,35 +9,22 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## **What is R and RStudio?**
-
-The term "`R`" is used to refer to both the programming language and the software that interprets the scripts written using it.
-
-"`RStudio`" is a very popular way to not only write your R scripts but also to interact with the R software. To function correctly, RStudio needs R and therefore both need to be installed on your computer.
-
-## **Navigating around RStudio**
-
-RStudio is divided into 4 "Panes": the **Source** for your scripts and documents (top-left), your **Environment/History** (top-right) which shows all the objects in your working space (Environment) and your command history (History), your **Files/Plots/Packages/Help/Viewer** (bottom-right), and the R **Console** (bottom-left). The placement of these panes and their content can be customized (see menu, Tools -\> Global Options -\> Pane Layout).
-
-The placement of these panes and their content can be customized (see menu, Tools -> Global Options -> Pane Layout). For ease of use, settings such as background color, font color, font size, and zoom level can also be adjusted in this menu (Global Options -> Appearance).
-
-## **What is the tidyverse?**
-
-The tidyverse is a collection of R packages designed for data science that share an underlying design philosophy, grammar, and data structures. Using the tidyverse can help to streamline your data manipulation and visualizations (and make this often-daunting process actually enjoyable).
-
 ### Install packages: 
 
 ```{r, eval = FALSE}
+#you only need to do this once!
+
 ```
 
 ### Load packages:
 
 ```{r, message = FALSE, warning = FALSE}
+
 ```
 
 ### Start coding!
 
-Using the tidyverse, you can string together multiple functions using the pipe operator `%>%`. R will evaluate the current function based off the the results of prior function calls.
+Using tidyverse, you can string together multiple functions using the pipe operator `%>%`. R will evaluate the current function based off the the results of prior function calls.
 
 Let's first create some completely hypothetical data about the number of pizzas eaten by Amelia and her friends over the past 3 years.
 
@@ -46,7 +33,7 @@ Let's first create some completely hypothetical data about the number of pizzas 
 
 ```
 
-**clean_names()**: within the janitor package, standardizes all column names by converting to snake_case
+**clean_names()**: standardizes all column names by converting to snake_case
 ```{r}
 
 ```
@@ -95,7 +82,7 @@ I don't like that R added an x before each of the years though. (It's because R 
 ```{r}
 # use mutate() to create a new column with the average number of pizzas eaten per month
 
-# use mutate in conjunction with ifelse, where if the observation in the 'name' column matches "Oike" or "Kathy", report "yes". If not, report "no".
+# use mutate in conjunction with ifelse, where if the observation in the 'name' column matches "Pike" or "Andrew", report "yes". If not, report "no".
 
 ```
 

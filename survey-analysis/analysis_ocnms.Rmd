@@ -12,6 +12,8 @@ Download LibreOffice, open up data folder in terminal, then run this script:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
+install.packages("tidyverse", "janitor", "here", "scales", "viridis", "ggimage") #you only need to do this once
+
 library(tidyverse) #use for so many things!
 library(janitor) #use to clean up column headers
 library(here) #use to work with folder structure
